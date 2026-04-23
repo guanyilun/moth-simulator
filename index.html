@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peppered Moth Evolution Simulator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  header {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  header h1 { font-size: 2em; margin-bottom: 10px; }
+  header p { opacity: 0.9; font-size: 1.1em; }
+  
+  .main-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+  }
+  
+  .controls {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    height: fit-content;
+  }
+  
+  .controls h2 {
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 8px;
+  }
+  
+  .control-group {
+    margin-bottom: 20px;
+  }
+  
+  .control-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #555;
+  }
+  
+  .control-group input[type="range"] {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  
+  .control-group .value {
+    text-align: right;
+    font-size: 0.9em;
+    color: #666;
+  }
+  
+  button {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    width: 100%;
+    margin-bottom: 10px;
+    transition: background 0.2s;
+  }
+  
+  button:hover { background: #2980b9; }
+  button:active { transform: translateY(1px); }
+  button.reset { background: #e74c3c; }
+  button.reset:hover { background: #c0392b; }
+  
+  .simulation-area {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .canvas-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  
+  #simCanvas {
+    width: 100%;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    background: #8B7355;
+    cursor: crosshair;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .stat-card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+  }
+  
+  .stat-card h3 {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 5px;
+  }
+  
+  .stat-card .value {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #2c3e50;
+  }
+  
+  .chart-container {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    height: 200px;
+    position: relative;
+  }
+  
+  #populationChart {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  .info-panel {
+    background: #e8f4f8;
+    border-left: 4px solid #3498db;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+  }
+  
+  .info-panel h3 { margin-bottom: 10px; color: #2c3e50; }
+  .info-panel ul { margin-left: 20px; }
+  .info-panel li { margin-bottom: 5px; }
+  
+  .generation-display {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #2c3e50;
+    text-align: center;
+    padding: 10px;
+    background: #ecf0f1;
+    border-radius: 5px;
+    margin-bottom: 15px;
+  }
+  
+  /* Tree color presets */
+  .preset-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  
+  .preset-btn {
+    padding: 8px;
+    font-size: 0.9em;
+    margin: 0;
+  }
+  
+  .preset-btn.light { background: #8B7355; }
+  .preset-btn.dark { background: #2c3e50; color: white; }
+  .preset-btn.mixed { background: linear-gradient(90deg, #8B7355 50%, #2c3e50 50%); color: white; }
+  
+  @media (max-width: 768px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🦋 Peppered Moth Evolution Simulator</h1>
+    <p>Watch natural selection in action. Adjust pollution levels and see how moth populations adapt over generations.</p>
+  </header>
+  
+  <div class="main-layout">
+    <div class="controls">
+      <h2>⚙️ Controls</h2>
+      
+      <div class="control-group">
+        <label>Tree Bark Color (Pollution Level)</label>
+        <div class="preset-buttons">
+          <button class="preset-btn light" onclick="setTreeColor('#8B7355')">Clean (Light)</button>
+          <button class="preset-btn dark" onclick="setTreeColor('#2c3e50')">Industrial (Dark)</button>
+          <button class="preset-btn mixed" onclick="setTreeColor('mixed')" style="grid-column: span 2;">Mixed Forest</button>
+        </div>
+        <input type="range" id="treeColor" min="0" max="100" value="30" style="margin-top: 10px;">
+        <div class="value" id="treeColorValue">Light Bark (Clean)</div>
+      </div>
+      
+      <div class="control-group">
+        <label>Initial Moth Population: <span id="popValue">100</span></label>
+        <input type="range" id="population" min="20" max="300" value="100">
+      </div>
+      
+      <div class="control-group">
+        <label>Initial Light Moth %: <span id="lightValue">50</span>%</label>
+        <input type="range" id="lightPercent" min="0" max="100" value="50">
+      </div>
+      
+      <div class="control-group">
+        <label>Predation Rate: <span id="predValue">30</span>%</label>
+        <input type="range" id="predation" min="5" max="80" value="30">
+      </div>
+      
+      <div class="control-group">
+        <label>Mutation Rate: <span id="mutValue">5</span>%</label>
+        <input type="range" id="mutation" min="0" max="20" value="5">
+      </div>
+      
+      <div class="control-group">
+        <label>Simulation Speed</label>
+        <select id="speed" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+          <option value="100">Slow</option>
+          <option value="50" selected>Normal</option>
+          <option value="10">Fast</option>
+          <option value="0">Instant</option>
+        </select>
+      </div>
+      
+      <button onclick="startSimulation()">▶ Start Simulation</button>
+      <button onclick="pauseSimulation()">⏸ Pause</button>
+      <button onclick="stepGeneration()">⏭ Step 1 Generation</button>
+      <button onclick="resetSimulation()" class="reset">↺ Reset</button>
+    </div>
+    
+    <div class="simulation-area">
+      <div class="generation-display">
+        Generation: <span id="generation">0</span>
+      </div>
+      
+      <div class="canvas-container">
+        <canvas id="simCanvas" width="800" height="500"></canvas>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card" style="border-color: #f1c40f;">
+          <h3>Light Moths</h3>
+          <div class="value" id="lightCount">0</div>
+        </div>
+        <div class="stat-card" style="border-color: #2c3e50;">
+          <h3>Dark Moths</h3>
+          <div class="value" id="darkCount">0</div>
+        </div>
+        <div class="stat-card" style="border-color: #3498db;">
+          <h3>Total Population</h3>
+          <div class="value" id="totalCount">0</div>
+        </div>
+        <div class="stat-card" style="border-color: #e74c3c;">
+          <h3>Eaten This Gen</h3>
+          <div class="value" id="eatenCount">0</div>
+        </div>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="populationChart"></canvas>
+      </div>
+      
+      <div class="info-panel">
+        <h3>📚 For Teachers</h3>
+        <ul>
+          <li><strong>Natural Selection:</strong> Moths that contrast with tree bark are eaten more often</li>
+          <li><strong>Industrial Melanism:</strong> Dark moths thrived during England's industrial revolution</li>
+          <li><strong>Discussion Q:</strong> What happens if you suddenly change the tree color mid-simulation?</li>
+          <li><strong>Extension:</strong> Track how many generations until 90% of moths match the trees</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== SIMULATION STATE ==========
+let moths = [];
+let generation = 0;
+let isRunning = false;
+let intervalId = null;
+let history = [];
+let treeColorType = 'light'; // 'light', 'dark', 'mixed'
+
+// Canvas setup
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+
+// Chart setup (simple canvas-based)
+const chartCanvas = document.getElementById('populationChart');
+const chartCtx = chartCanvas.getContext('2d');
+chartCanvas.width = chartCanvas.offsetWidth;
+chartCanvas.height = chartCanvas.offsetHeight;
+
+// ========== MOTH CLASS ==========
+class Moth {
+  constructor(x, y, isDark) {
+    this.x = x;
+    this.y = y;
+    this.isDark = isDark;
+    this.size = 4;
+    this.alive = true;
+  }
+  
+  draw() {
+    if (!this.alive) return;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = this.isDark ? '#2c3e50' : '#f1c40f';
+    ctx.fill();
+  }
+  
+  // Calculate camouflage score (0-1, higher = more visible)
+  getVisibility(treeColor) {
+    if (treeColorType === 'mixed') {
+      // Mixed: check nearest tree patch
+      const patch = this.x < canvas.width / 2 ? '#8B7355' : '#2c3e50';
+      return this.isDark === (patch === '#2c3e50') ? 0.2 : 0.8;
+    }
+    const isDarkTree = treeColor === '#2c3e50';
+    return this.isDark === isDarkTree ? 0.2 : 0.8;
+  }
+}
+
+// ========== DRAWING FUNCTIONS ==========
+function drawTrees() {
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  if (treeColorType === 'mixed') {
+    // Split screen: light left, dark right
+    ctx.fillStyle = '#8B7355';
+    ctx.fillRect(0, 0, w/2, h);
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(w/2, 0, w/2, h);
+    
+    // Tree textures
+    drawTreeTexture('#8B7355', 0, w/2, h);
+    drawTreeTexture('#2c3e50', w/2, w/2, h);
+  } else {
+    const color = treeColorType === 'dark' ? '#2c3e50' : '#8B7355';
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, w, h);
+    drawTreeTexture(color, 0, w, h);
+  }
+}
+
+function drawTreeTexture(baseColor, x, width, height) {
+  ctx.fillStyle = baseColor === '#2c3e50' ? '#1a252f' : '#6B5B45';
+  // Simple bark pattern
+  for (let i = 0; i < 20; i++) {
+    const tx = x + Math.random() * width;
+    const ty = Math.random() * height;
+    ctx.beginPath();
+    ctx.arc(tx, ty, 15 + Math.random() * 20, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ========== SIMULATION LOGIC ==========
+function initializeMoths() {
+  moths = [];
+  const pop = parseInt(document.getElementById('population').value);
+  const lightPct = parseInt(document.getElementById('lightPercent').value);
+  
+  for (let i = 0; i < pop; i++) {
+    const isDark = Math.random() * 100 > lightPct;
+    moths.push(new Moth(
+      Math.random() * canvas.width,
+      Math.random() * canvas.height,
+      isDark
+    ));
+  }
+}
+
+function runGeneration() {
+  const predationRate = parseInt(document.getElementById('predation').value) / 100;
+  const mutationRate = parseInt(document.getElementById('mutation').value) / 100;
+  const treeColor = treeColorType === 'dark' ? '#2c3e50' : '#8B7355';
+  
+  // Birds eat moths based on visibility
+  let eaten = 0;
+  moths.forEach(moth => {
+    if (!moth.alive) return;
+    const visibility = moth.getVisibility(treeColor);
+    if (Math.random() < predationRate * visibility) {
+      moth.alive = false;
+      eaten++;
+    }
+  });
+  
+  // Survivors reproduce
+  const survivors = moths.filter(m => m.alive);
+  moths = [];
+  
+  survivors.forEach(moth => {
+    // Reproduce (1-3 offspring)
+    const offspring = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < offspring; i++) {
+      let isDark = moth.isDark;
+      // Mutation
+      if (Math.random() < mutationRate) {
+        isDark = !isDark;
+      }
+      moths.push(new Moth(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        isDark
+      ));
+    }
+  });
+  
+  // Cap population
+  const maxPop = parseInt(document.getElementById('population').value) * 2;
+  if (moths.length > maxPop) {
+    moths = moths.slice(0, maxPop);
+  }
+  
+  generation++;
+  updateDisplay(eaten);
+  draw();
+}
+
+function updateDisplay(eaten) {
+  // Debug output
+  document.getElementById('debug').textContent = `Last: ${eaten} eaten`;
+  document.getElementById('generation').textContent = generation;
+  
+  const light = moths.filter(m => !m.isDark).length;
+  const dark = moths.filter(m => m.isDark).length;
+  const total = moths.length;
+  
+  document.getElementById('lightCount').textContent = light;
+  document.getElementById('darkCount').textContent = dark;
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('eatenCount').textContent = eaten;
+  
+  // History for chart
+  history.push({ light, dark, total });
+  if (history.length > 50) history.shift();
+  
+  drawChart();
+}
+
+// ========== DRAWING ==========
+function draw() {
+  drawTrees();
+  moths.forEach(moth => moth.draw());
+}
+
+function drawChart() {
+  const w = chartCanvas.width;
+  const h = chartCanvas.height;
+  
+  chartCtx.clearRect(0, 0, w, h);
+  
+  if (history.length < 2) return;
+  
+  const padding = 40;
+  const chartW = w - padding * 2;
+  const chartH = h - padding * 2;
+  
+  // Background grid
+  chartCtx.strokeStyle = '#ddd';
+  chartCtx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding + (chartH / 4) * i;
+    chartCtx.beginPath();
+    chartCtx.moveTo(padding, y);
+    chartCtx.lineTo(w - padding, y);
+    chartCtx.stroke();
+  }
+  
+  // Find max for scaling
+  const maxVal = Math.max(...history.map(d => d.total));
+  
+  // Draw lines
+  function drawLine(key, color) {
+    chartCtx.beginPath();
+    chartCtx.strokeStyle = color;
+    chartCtx.lineWidth = 2;
+    
+    history.forEach((d, i) => {
+      const x = padding + (i / (history.length - 1)) * chartW;
+      const y = padding + chartH - (d[key] / maxVal) * chartH;
+      if (i === 0) chartCtx.moveTo(x, y);
+      else chartCtx.lineTo(x, y);
+    });
+    chartCtx.stroke();
+  }
+  
+  drawLine('light', '#f1c40f');
+  drawLine('dark', '#2c3e50');
+  drawLine('total', '#3498db');
+  
+  // Legend
+  chartCtx.font = '12px sans-serif';
+  chartCtx.fillStyle = '#f1c40f';
+  chartCtx.fillRect(padding, 10, 15, 10);
+  chartCtx.fillText('Light', padding + 20, 18);
+  
+  chartCtx.fillStyle = '#2c3e50';
+  chartCtx.fillRect(padding + 70, 10, 15, 10);
+  chartCtx.fillText('Dark', padding + 90, 18);
+  
+  chartCtx.fillStyle = '#3498db';
+  chartCtx.fillRect(padding + 130, 10, 15, 10);
+  chartCtx.fillText('Total', padding + 150, 18);
+}
+
+// ========== CONTROLS ==========
+function setTreeColor(color) {
+  treeColorType = color === 'mixed' ? 'mixed' : (color === '#2c3e50' ? 'dark' : 'light');
+  document.getElementById('treeColor').value = color === 'mixed' ? 50 : (color === '#2c3e50' ? 100 : 0);
+  updateTreeColorLabel();
+  if (generation > 0) draw();
+}
+
+document.getElementById('treeColor').addEventListener('input', function() {
+  const val = parseInt(this.value);
+  if (val < 33) {
+    treeColorType = 'light';
+  } else if (val > 66) {
+    treeColorType = 'dark';
+  } else {
+    treeColorType = 'mixed';
+  }
+  updateTreeColorLabel();
+  if (generation > 0) draw();
+});
+
+function updateTreeColorLabel() {
+  const labels = {
+    'light': 'Light Bark (Clean)',
+    'dark': 'Dark Bark (Polluted)',
+    'mixed': 'Mixed Forest'
+  };
+  document.getElementById('treeColorValue').textContent = labels[treeColorType];
+}
+
+// Sync sliders
+document.getElementById('population').addEventListener('input', function() {
+  document.getElementById('popValue').textContent = this.value;
+});
+document.getElementById('lightPercent').addEventListener('input', function() {
+  document.getElementById('lightValue').textContent = this.value;
+});
+document.getElementById('predation').addEventListener('input', function() {
+  document.getElementById('predValue').textContent = this.value;
+});
+document.getElementById('mutation').addEventListener('input', function() {
+  document.getElementById('mutValue').textContent = this.value;
+});
+
+// ========== SIMULATION CONTROL ==========
+function startSimulation() {
+  if (isRunning) return;
+  if (generation === 0) {
+    initializeMoths();
+    draw();
+    updateDisplay(0);
+  }
+  isRunning = true;
+  const speed = parseInt(document.getElementById('speed').value);
+  intervalId = setInterval(() => {
+    runGeneration();
+  }, speed);
+}
+
+function pauseSimulation() {
+  isRunning = false;
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
+}
+
+function stepGeneration() {
+  if (generation === 0) {
+    initializeMoths();
+    draw();
+    updateDisplay(0);
+  }
+  runGeneration();
+}
+
+function resetSimulation() {
+  pauseSimulation();
+  generation = 0;
+  history = [];
+  moths = [];
+  document.getElementById('generation').textContent = '0';
+  document.getElementById('lightCount').textContent = '0';
+  document.getElementById('darkCount').textContent = '0';
+  document.getElementById('totalCount').textContent = '0';
+  document.getElementById('eatenCount').textContent = '0';
+  drawTrees();
+  drawChart();
+}
+
+// Initial draw
+drawTrees();
+updateTreeColorLabel();
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  chartCanvas.width = chartCanvas.offsetWidth;
+  chartCanvas.height = chartCanvas.offsetHeight;
+  drawChart();
+});
+</script>
+</body>
+</html>
